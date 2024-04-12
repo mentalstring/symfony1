@@ -168,10 +168,11 @@ class sfWebResponse extends sfResponse
      * @param string $domain   Domain name
      * @param bool   $secure   If secure
      * @param bool   $httpOnly If uses only HTTP
+     * @param bool   $samesite If uses Same-site cookies
      *
      * @throws sfException If fails to set the cookie
      */
-    public function setCookie($name, $value, $expire = null, $path = '/', $domain = '', $secure = false, $httpOnly = false)
+    public function setCookie($name, $value, $expire = null, $path = '/', $domain = '', $secure = false, $httpOnly = false, $samesite = '')
     {
         if (null !== $expire) {
             if (is_numeric($expire)) {
@@ -192,6 +193,7 @@ class sfWebResponse extends sfResponse
             'domain' => $domain,
             'secure' => $secure ? true : false,
             'httpOnly' => $httpOnly,
+            'samesite' => $samesite,
         ];
     }
 
@@ -358,7 +360,14 @@ class sfWebResponse extends sfResponse
         foreach ($this->cookies as $cookie) {
             $expire = isset($cookie['expire']) ? $cookie['expire'] : 0;
             $domain = isset($cookie['domain']) ? $cookie['domain'] : '';
-            setrawcookie($cookie['name'], $cookie['value'], $expire, $cookie['path'], $domain, $cookie['secure'], $cookie['httpOnly']);
+            setrawcookie($cookie['name'], $cookie['value'], [
+                'expires' => $expire,
+                'path' => $cookie['path'],
+                'domain' => $domain,
+                'secure' => $cookie['secure'],
+                'httpOnly' => $cookie['httpOnly'],
+                'samesite' => $cookie['samesite'],
+            ]);
 
             if ($this->options['logging']) {
                 $this->dispatcher->notify(new sfEvent($this, 'application.log', [sprintf('Send cookie "%s": "%s"', $cookie['name'], $cookie['value'])]));
