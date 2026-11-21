@@ -76,7 +76,13 @@ jobs:
         run: |
           if [ -s "$RUNNER_TEMP/symfony-php-errors.log" ]; then
             echo 'has-diagnostics=true' >> "$GITHUB_OUTPUT"
-            echo '::warning title=PHP ${{ matrix.php-version }} test diagnostics::The framework test suite logged PHP diagnostics. See the PHP diagnostics artifact for this job.'
+            echo '::warning title=PHP ${{ matrix.php-version }} test diagnostics::The framework test suite logged PHP diagnostics. Expand the PHP diagnostics group in this step.'
+            echo '::group::PHP ${{ matrix.php-version }} diagnostics'
+            token="php-diagnostics-$(date +%s%N)"
+            echo "::stop-commands::$token"
+            cat "$RUNNER_TEMP/symfony-php-errors.log"
+            echo "::$token::"
+            echo '::endgroup::'
           fi
 
       - name: Upload PHP diagnostics
