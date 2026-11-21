@@ -62,4 +62,27 @@ jobs:
         run: php data/bin/check_configuration.php
 
       - name: Run Tests
-        run: php data/bin/symfony symfony:test --trace
+        run: |
+          ini_dir=$(mktemp -d "$RUNNER_TEMP/symfony-php-ini.XXXXXX")
+          log="$RUNNER_TEMP/symfony-php-errors.log"
+          : > "$log"
+          printf 'error_reporting=E_ALL\nlog_errors=On\nerror_log="%s"\n' "$log" > "$ini_dir/99-symfony-tests.ini"
+          # Lime's PHP subprocesses inherit the scan path along with the regular INI settings.
+          PHP_INI_SCAN_DIR="${PHP_INI_SCAN_DIR-}:$ini_dir" php data/bin/symfony symfony:test --trace
+
+      - name: Report PHP diagnostics
+        id: php-diagnostics
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -s "$RUNNER_TEMP/symfony-php-errors.log" ]; then
+            echo 'has-diagnostics=true' >> "$GITHUB_OUTPUT"
+            echo '::warning title=PHP test diagnostics::The framework test suite logged PHP diagnostics. See the PHP diagnostics artifact for this job.'
+          fi
+
+      - name: Upload PHP diagnostics
+        if: ${{ !cancelled() && steps.php-diagnostics.outputs.has-diagnostics == 'true' }}
+        uses: actions/upload-artifact@v7
+        continue-on-error: true
+        with:
+          name: php-diagnostics-${{ matrix.php-version }}-memcached-${{ matrix.memcached-version }}
+          path: ${{ runner.temp }}/symfony-php-errors.log
