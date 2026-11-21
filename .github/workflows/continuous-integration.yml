@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 'ci/**'
   pull_request:
 
 env:
@@ -61,14 +62,16 @@ jobs:
       - name: Run Check configuration
         run: php data/bin/check_configuration.php
 
-      - name: Run Tests
+      - name: Prepare Tests
         run: |
-          ini_dir=$(mktemp -d "$RUNNER_TEMP/symfony-php-ini.XXXXXX")
+          ini_dir="$RUNNER_TEMP/symfony-php-ini"
           log="$RUNNER_TEMP/symfony-php-errors.log"
+          mkdir -p "$ini_dir"
           : > "$log"
           printf 'error_reporting=E_ALL\nlog_errors=On\nerror_log="%s"\n' "$log" > "$ini_dir/99-symfony-tests.ini"
-          # Lime's PHP subprocesses inherit the scan path along with the regular INI settings.
-          PHP_INI_SCAN_DIR="${PHP_INI_SCAN_DIR-}:$ini_dir" php data/bin/symfony symfony:test --trace
+
+      - name: Run Tests
+        run: PHP_INI_SCAN_DIR="${PHP_INI_SCAN_DIR-}:$RUNNER_TEMP/symfony-php-ini" php data/bin/symfony symfony:test --trace
 
       - name: Report PHP diagnostics
         id: php-diagnostics
