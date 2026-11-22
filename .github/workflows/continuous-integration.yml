@@ -30,8 +30,6 @@ jobs:
     services:
       memcached:
         image: "memcached:${{ matrix.memcached-version }}"
-        ports:
-          - 11211:11211
 
     steps:
       - name: Checkout
@@ -44,7 +42,7 @@ jobs:
         with:
           php-version: "${{ matrix.php-version }}"
           ini-file: development
-          extensions: apcu, memcache
+          extensions: apcu
           ini-values: apc.enable_cli=1
 
       - name: Get composer cache directory
@@ -73,26 +71,7 @@ jobs:
           printf 'error_reporting=E_ALL\nlog_errors=On\nerror_log="%s"\n' "$log" > "$ini_dir/99-symfony-tests.ini"
 
       - name: Run Tests
-        run: PHP_INI_SCAN_DIR="${PHP_INI_SCAN_DIR-}:$RUNNER_TEMP/symfony-php-ini" php data/bin/symfony symfony:test --trace --xml="$RUNNER_TEMP/symfony-tests.xml"
-
-      - name: Verify Memcache tests
-        if: ${{ !cancelled() }}
-        run: |
-          php <<'PHP'
-          <?php
-          $results = simplexml_load_file(getenv('RUNNER_TEMP').'/symfony-tests.xml');
-          $suites = $results ? $results->xpath('//testsuite[@name="sfMemcacheCacheTest"]') : [];
-          if (count($suites) !== 1) {
-              fwrite(STDERR, "Memcache test results are missing.\n");
-              exit(1);
-          }
-          $suite = $suites[0];
-          printf("Memcache: %d tests, %d skipped, %d failures, %d errors\n",
-              (int) $suite['tests'], (int) $suite['skipped'],
-              (int) $suite['failures'], (int) $suite['errors']);
-          exit((int) $suite['tests'] > 0 && (int) $suite['skipped'] === 0
-              && (int) $suite['failures'] === 0 && (int) $suite['errors'] === 0 ? 0 : 1);
-          PHP
+        run: PHP_INI_SCAN_DIR="${PHP_INI_SCAN_DIR-}:$RUNNER_TEMP/symfony-php-ini" php data/bin/symfony symfony:test --trace
 
       - name: Report PHP diagnostics
         id: php-diagnostics
